@@ -1,0 +1,6 @@
+framework module Pods_CustomTextFiledDemo {
+  umbrella header "Pods-CustomTextFiledDemo-umbrella.h"
+
+  export *
+  module * { export * }
+}
