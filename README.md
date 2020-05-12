@@ -6,13 +6,28 @@
 # 使用
 ## vc遵循代理 初始化view
 ```
-     let view = WLOptionView.init(frame: CGRect.init(x: 100, y: 300, width: 200, height: 40))
+.normal 选择框不可输入
+.search可以搜索的输入框
+```
+```
+     let view = WLOptionView.init(frame: .zero, type: .normal)
      view.dataSource = ["最近24小时","最近3天","最近7天","自定义时间"]
      view.delegate = self
      view.selectedCallBack { (viewTemp, index) in
-            
+
      }
      self.view.addSubview(view)
+```
+## search
+```
+let view1 = WLOptionView.init(frame: CGRect.init(x: 100, y: 200, width: 200, height: 40), type: .search)
+      view1.dataSource = ["121","123","125","213","232","224","267","265","452","432","435","227","239","260"]
+      view1.delegate = self
+      view1.searchSelectedCallBack(block: { (viewTemp, str, index) in
+
+      })
+      self.view.addSubview(view)
+      self.view.addSubview(view1)
 ```
 ## 或使用snpkit
 ```

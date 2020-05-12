@@ -8,22 +8,39 @@
 
 import UIKit
 import SnapKit
+enum InputType:Int{
+    case search//搜索输入框
+    case normal//选择输入框
+}
 protocol WLOPtionViewDelegate{
     func optionView(view:WLOptionView ,selectedIndex:(Int));
+    func searchOptionView(view:WLOptionView ,selctedString:String ,selectedIndex:(Int));
+}
+//可选协议方法
+extension WLOPtionViewDelegate {
+     func optionView(view:WLOptionView ,selectedIndex:(Int)){}
+    func searchOptionView(view:WLOptionView ,selctedString:String ,selectedIndex:(Int)){}
 }
 typealias SelectedBlock = (_ view:WLOptionView ,_ selectedIndex:(Int))-> Void
+typealias SearchSelectedBlock = (_ view:WLOptionView ,_ selctedString:String,_ selectedIndex:(Int))-> Void
 let animationTime = 0.3
 let cellHeight = 42
-
+let rows = 5
 
 class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
+    var type:InputType!
     var dataSource:[String] = []{
         didSet {
-            if rowheight != 0 {
-                self.tableViewHeight = CGFloat(CGFloat(self.dataSource.count) * rowheight)
+            if type == .normal  {
+                if rowheight != 0 {
+                    self.tableViewHeight = CGFloat(CGFloat(self.dataSource.count) * rowheight)
+                }else{
+                    self.tableViewHeight = CGFloat(self.dataSource.count * cellHeight)
+                }
             }else{
-                self.tableViewHeight = CGFloat(self.dataSource.count * cellHeight)
+                tableViewHeight = 210
             }
+            
         }
     }
     //标题
@@ -32,6 +49,24 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
             self.titleLabel.text = title
         }
     }
+    //提示输入
+    var placeholder:String?{
+        didSet {
+            self.searchTextField.placeholder = placeholder
+        }
+    }
+    //颜色
+          var keyWordColor:UIColor?{
+              didSet {
+                 self.searchTextField.textColor = keyWordColor
+              }
+          }
+       // 标题字体大小
+       var keyWordFontSize:CGFloat?{
+           didSet {
+               self.searchTextField.font = .systemFont(ofSize: keyWordFontSize!)
+           }
+       }
     //标题颜色
     var titleColor:UIColor?{
         didSet {
@@ -68,49 +103,70 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
             self.tableView.rowHeight = rowheight
         }
     }
+    //tableView的高度
+    var tableViewHeight:CGFloat?
     var delegate: WLOPtionViewDelegate?
     var selectedBlock: SelectedBlock?
+    var searchSelectedBlock: SearchSelectedBlock?
     
-    var tableViewHeight:CGFloat?//tableView的高度
-    var isDirectionUp:Bool = false//tableView的高度
+    var isDirectionUp:Bool = false
+    var isShowing:Bool = false
     
+    //block
     func selectedCallBack(block:@escaping (_ view:WLOptionView ,_ selectedIndex:(Int))->Void ) {
         selectedBlock = block
     }
+    func searchSelectedCallBack(block:@escaping (_ view:WLOptionView ,_ selctedString:String,_ selectedIndex:(Int))->Void ) {
+           searchSelectedBlock = block
+       }
     //初始化
-    override init(frame: CGRect) {
+   init(frame: CGRect ,type: InputType) {
         super.init(frame: frame)
+        self.type = type
         setUI()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-        setUI()
     }
     func setUI() {
         cornerRadius = 5
         borderWidth = 1
         borderColor = UIColor.init(red: 153.0/255, green: 153.0/255, blue: 153.0/255, alpha: 1)
         addSubview(rightImageView)
-        addSubview(titleLabel)
-        addSubview(maskBtn)
+        if type == InputType.search {
+            addSubview(searchTextField)
+            searchTextField.snp.makeConstraints { (make) in
+                              make.centerY.equalToSuperview()
+                              make.left.equalTo(self.snp.left).offset(10)
+                make.right.equalTo(rightImageView.snp.left)
+                          }
+        }else{
+            addSubview(titleLabel)
+            addSubview(maskBtn)
+             titleLabel.snp.makeConstraints { (make) in
+                              make.centerY.equalToSuperview()
+                              make.left.equalTo(self.snp.left).offset(10)
+            //            make.right.equalTo(rightImageView.snp.left)
+                          }
+                    maskBtn.snp.makeConstraints { (make) in
+                      make.left.right.top.bottom.equalToSuperview()
+                   }
+        }
+        
        
         rightImageView.snp.makeConstraints { (make) in
             make.centerY.equalToSuperview()
             make.right.equalTo(self.snp.right).offset(-10)
+            make.width.equalTo(10)
         }
-        titleLabel.snp.makeConstraints { (make) in
-                  make.centerY.equalToSuperview()
-                  make.left.equalTo(self.snp.left).offset(10)
-//            make.right.equalTo(rightImageView.snp.left)
-              }
-        maskBtn.snp.makeConstraints { (make) in
-          make.left.right.top.bottom.equalToSuperview()
-       }
+       
     }
     //MARK: show,dissmiss
       @objc func show(){
-        self.rightImageView.image = isDirectionUp ? UIImage.init(named: "index_top_down") : UIImage.init(named: "index_top_up")
+        isShowing = true
+         self.rightImageView.image = isDirectionUp ? UIImage.init(named: "index_top_down") : UIImage.init(named: "index_top_up")
+    //        WEAKSELF;
             let window:UIWindow = UIApplication.shared.windows[0]
             window.addSubview(backgroundBtn)
             window.addSubview(tableView)
@@ -132,7 +188,7 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
             tableView.frame = CGRect.init(x: tableViewFrame.origin.x, y: tableViewFrame.origin.y+((isDirectionUp ?tableViewHeight:0)!), width: tableViewFrame.size.width, height: 0)
        
             UIView.animate(withDuration: animationTime) {
-                self.rightImageView.transform = CGAffineTransform.init(scaleX: self.rightImageView.transform.a, y: CGFloat((self.isDirectionUp ? -Double.pi/2:Double.pi/2)))
+//                self.rightImageView.transform = CGAffineTransform.init(scaleX: self.rightImageView.transform.a, y: CGFloat((self.isDirectionUp ? -Double.pi/2:Double.pi/2)))
                 self.tableView.frame = CGRect.init(x: tableViewFrame.origin.x, y: tableViewFrame.origin.y, width: tableViewFrame.size.width, height: tableViewFrame.size.height);
                 print("%@",NSCoder.string(for: self.tableView.frame))
             }
@@ -140,9 +196,10 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
          
         }
         @objc func dissmiss(){
-            self.rightImageView.image = UIImage.init(named: "index_top_down")
+            isShowing = false
+             self.rightImageView.image = isShowing ? UIImage.init(named: "index_top_up") : UIImage.init(named: "index_top_down")
             UIView.animate(withDuration: animationTime, animations: {
-                 self.rightImageView.transform = .identity
+//                 self.rightImageView.transform = .identity
                 self.tableView.frame = CGRect.init(x: self.tableView.frame.origin.x, y: self.tableView.frame.origin.y + ((self.isDirectionUp ? self.tableViewHeight : 0)!), width: self.tableView.frame.size.width, height: 0)
             }) { (finished) in
                 self.backgroundBtn.removeFromSuperview()
@@ -152,6 +209,28 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
                
          
         }
+    @objc func searchWithKeyword(sender:UITextField){
+          if !isShowing {
+              show()
+          }
+//         self.rightImageView.image = isShowing ? UIImage.init(named: "index_top_down") : UIImage.init(named: "index_top_up")
+          if sender.text!.count > 0 {
+              var array = [String]()
+              for str:String in tempDataSource {
+                  if str.contains(find: sender.text!) {
+                      array.append(str)
+                  }
+              }
+              dataSource = array
+              if array.count == 0 {
+                  dissmiss()
+              }
+          }else{
+              dataSource = tempDataSource
+              dissmiss()
+          }
+          tableView.reloadData()
+      }
     //MARK: UITableViewDelegate,UITableViewDataSource
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if dataSource.count == 0{
@@ -169,12 +248,24 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
         return cell!
        }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        title = dataSource[indexPath.row]
-        dissmiss()
-        self.delegate?.optionView(view: self, selectedIndex: indexPath.row)
-        if (selectedBlock != nil) {
-            selectedBlock!(self,indexPath.row)
-                   }
+        if type == InputType.search {
+           searchTextField.text = dataSource[indexPath.row]
+           dissmiss()
+            self.delegate?.searchOptionView(view: self, selctedString:dataSource[indexPath.row], selectedIndex: indexPath.row)
+           if (searchSelectedBlock != nil) {
+               searchSelectedBlock!(self,dataSource[indexPath.row],indexPath.row)
+                      }
+            searchTextField.resignFirstResponder()
+        }else{
+            title = dataSource[indexPath.row]
+                       dissmiss()
+                              self.delegate?.optionView(view: self, selectedIndex: indexPath.row)
+                              if (selectedBlock != nil) {
+                                  selectedBlock!(self,indexPath.row)
+                                         }
+        }
+        
+       
        
     }
     // MARK:懒加载控件
@@ -228,6 +319,26 @@ class WLOptionView: UIView, UITableViewDelegate, UITableViewDataSource {
         bb.addTarget(self, action: #selector(dissmiss), for: .touchUpInside)
         return bb
     }()
-  
+    lazy var searchTextField: UITextField={
+         let sf = UITextField.init()
+         sf.placeholder = "请输入关键字";
+         sf.textColor = UIColor.init(red: 153.0/255.0, green: 153.0/255.0, blue: 153.0/255.0, alpha: 1)
+         sf.addTarget(self, action: #selector(searchWithKeyword), for: .editingChanged)
+         sf.font = .systemFont(ofSize: 16)
+         return sf
+     }()
+    lazy var tempDataSource: [String]={
+        var ts = [String]()
+        ts = self.dataSource
+        return ts
+    }()
     
+}
+extension String {
+    func contains(find: String) -> Bool{
+        return self.range(of: find) != nil
+    }
+    func containsIgnoringCase(find: String) -> Bool{
+        return self.range(of: find, options: .caseInsensitive) != nil
+    }
 }
